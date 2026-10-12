@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AI-Driven Twin Cities Optimization
 
 A research prototype web application featuring digital twins of two connected metropolitan areas (**City A: Metro Alpha** and **City B: Metro Beta**), intercity corridor simulation, AI-assisted congestion forecasting, and comparative decision analysis (Independent City Baseline vs. Joint Coordinated Optimization).
@@ -213,3 +214,6 @@ npm run build
 
 
 
+=======
+# Ai-Driven-Twin-Cities-optimizition-
+>>>>>>> d538ee82b88b85032f829d3703f437720b66988f
