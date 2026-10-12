@@ -141,8 +141,9 @@ def compute_paired_comparison(
     if n >= 2 and std_diff > 1e-9:
         try:
             res = stats.ttest_rel(base_arr, target_arr)
-            t_stat = round(float(res.statistic), 4)
-            p_param = round(float(res.pvalue), 6)
+            if math.isfinite(float(res.pvalue)):
+                t_stat = round(float(res.statistic), 4)
+                p_param = float(res.pvalue)
         except Exception:
             pass
 
@@ -153,7 +154,8 @@ def compute_paired_comparison(
             # Check if there are non-zero differences
             if np.any(np.abs(diff_arr) > 1e-9):
                 w_res = stats.wilcoxon(base_arr, target_arr, zero_method="wilcox")
-                p_wilcox = round(float(w_res.pvalue), 6)
+                if math.isfinite(float(w_res.pvalue)):
+                    p_wilcox = float(w_res.pvalue)
         except Exception:
             pass
 
@@ -193,7 +195,7 @@ def compute_paired_comparison(
         t_statistic=t_stat,
         p_value_parametric=p_param,
         p_value_wilcoxon=p_wilcox,
-        p_value_adjusted_holm=p_param,  # Populated post-hoc via apply_holm_bonferroni
+        p_value_adjusted_holm=None,
         effect_size_cohen_dz=cohen_dz,
         is_statistically_significant=(p_param is not None and p_param < 0.05),
         practical_significance_note=effect_label
@@ -204,25 +206,30 @@ def apply_holm_bonferroni(comparisons: List[PairedComparisonResult]) -> List[Pai
     """
     Applies Holm-Bonferroni step-down correction for family-wise error rate across multiple hypotheses.
     """
-    valid_indices = [
-        i for i, c in enumerate(comparisons)
-        if c.p_value_parametric is not None
-    ]
+    valid_indices = []
+    for i, comparison in enumerate(comparisons):
+        p_value = comparison.p_value_parametric
+        if p_value is not None and math.isfinite(p_value) and 0.0 <= p_value <= 1.0:
+            valid_indices.append(i)
+        else:
+            comparison.p_value_adjusted_holm = None
+            comparison.is_statistically_significant = False
     m = len(valid_indices)
     if m == 0:
         return comparisons
 
     # Sort indices by unadjusted p-value ascending
-    sorted_pairs = sorted(valid_indices, key=lambda idx: comparisons[idx].p_value_parametric or 1.0)
+    sorted_pairs = sorted(valid_indices, key=lambda idx: comparisons[idx].p_value_parametric)
     
     running_max = 0.0
     for rank, orig_idx in enumerate(sorted_pairs):
-        p_raw = comparisons[orig_idx].p_value_parametric or 1.0
+        p_raw = comparisons[orig_idx].p_value_parametric
+        assert p_raw is not None
         multiplier = m - rank
         p_adj = min(1.0, max(running_max, p_raw * multiplier))
         running_max = p_adj
         
-        comparisons[orig_idx].p_value_adjusted_holm = round(p_adj, 6)
+        comparisons[orig_idx].p_value_adjusted_holm = p_adj
         comparisons[orig_idx].is_statistically_significant = bool(p_adj < 0.05)
 
     return comparisons

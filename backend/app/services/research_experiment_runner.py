@@ -155,11 +155,11 @@ METRIC_DEFINITIONS: List[MetricDefinition] = [
     ),
     MetricDefinition(
         metric_id="optimization_execution_time_ms",
-        name="Optimization Computation Time",
+        name="Optimization Runtime",
         unit="ms",
         category="secondary",
         higher_is_better=False,
-        description="Wall-clock execution time for algorithmic decision optimization."
+        description="Wall-clock runtime for the complete strategy run, measured in milliseconds."
     )
 ]
 
@@ -195,6 +195,24 @@ class ResearchExperimentRunner:
             self._run_experiment_thread(experiment_id, config)
 
         return experiment_id
+
+    def recalculate_saved_summaries(
+        self,
+        experiment: ResearchExperimentResponse
+    ) -> ResearchExperimentResponse:
+        """Refreshes summaries from saved run records without mutating or persisting the archive."""
+        if not experiment.run_records:
+            return experiment
+
+        refreshed = experiment.model_copy(deep=True)
+        refreshed.scenario_summaries = self._compile_scenario_summaries(
+            refreshed.run_records,
+            refreshed.config.scenarios
+        )
+        refreshed.research_summary_text = self._generate_findings_narrative(
+            refreshed.scenario_summaries
+        )
+        return refreshed
 
     def _map_scenario_to_demand(self, scenario: ResearchScenario) -> DemandLevel:
         if scenario == ResearchScenario.NORMAL:

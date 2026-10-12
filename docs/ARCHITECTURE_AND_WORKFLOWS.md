@@ -1,6 +1,6 @@
 # AI-Driven Twin Cities Optimization: Architecture and Operational Workflows
 
-This document details the system architecture, operational workflows, research experiment pipelines, and data validation protocols for the **AI-Driven Twin Cities Optimization** research prototype.
+This document details the system architecture, operational workflows, synthetic research experiments, and traffic-data comparison protocols for the **AI-Driven Twin Cities Optimization** research prototype.
 
 All diagrams are rendered using standard Mermaid syntax.
 
@@ -20,7 +20,7 @@ graph TB
         UI_OptIndep["Independent Optimization"]
         UI_OptCoord["Joint Coordinated Optimization"]
         UI_MPC["MPC & Scenario Planning"]
-        UI_RealWorld["Real-World Validation Hub"]
+        UI_RealWorld["Traffic Data Comparison Hub"]
         UI_Research["Research Experimentation Suite"]
     end
 
@@ -44,9 +44,9 @@ graph TB
         MPCOpt["Phase 8: Multi-Step MPC Planner<br/>• Receding Horizon Execution (H ∈ {1,2,3,5})<br/>• Bounded Beam Search (K ≤ 10)<br/>• Discounted Cost & Robust/CVaR Modes"]
     end
 
-    subgraph Data_Research_Services["Data Ingestion & Empirical Evaluation"]
-        RealWorldSvc["Phase 9: Real-World Ingestion Service<br/>• CSV/JSON Parser & UTC Normalizer<br/>• Strict Quarantine Buffer<br/>• Sensor-to-Road Mapping Layer"]
-        CalibEngine["Simulation Calibration Engine<br/>• Bounded Grid Search<br/>• Chronological Train/Test Split (70/30)<br/>• Safe MAPE & Pearson r Metrics"]
+    subgraph Data_Research_Services["Data Ingestion & Synthetic Benchmark Evaluation"]
+        RealWorldSvc["Phase 9: Traffic Data Ingestion<br/>• CSV/JSON Parser & UTC Normalizer<br/>• Generated PeMS-schema-aligned benchmark<br/>• Imported source authenticity is unverified"]
+        CalibEngine["Simulation Calibration Engine<br/>• Bounded Search on Selected Metric<br/>• Chronological Record Split (70/30)<br/>• Safe MAPE & Pearson r Metrics"]
         ResearchRunner["Phase 7: Research Experiment Engine<br/>• Multi-Seed Matched Executions<br/>• Paired t-tests & Wilcoxon Signed-Rank<br/>• Cohen's dz & Holm-Bonferroni Correction"]
         StorageEngine["Persistent JSON Storage<br/>• Experiment Runs & Telemetry Logs<br/>• CSV/JSON Export Pipeline"]
     end
@@ -72,7 +72,7 @@ graph TB
     API_Research --> ResearchRunner
 
     %% Inter-service connections
-    MLPredictor -.-> SimEngine
+    SimEngine --> MLPredictor
     IndepOpt --> SimEngine
     CoordOpt --> SimEngine
     MPCOpt --> SimEngine
@@ -89,14 +89,13 @@ graph TB
 
 ## 2. Operational Workflow Diagram
 
-Illustrates the step-by-step state transition of the twin cities system during live simulation and multi-step receding horizon Model Predictive Control (MPC):
+Illustrates live simulation and multi-step receding-horizon Model Predictive Control (MPC). MPC evaluates candidate actions through cloned simulation-engine rollouts; it does not call the Random Forest predictor.
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Client as Frontend Dashboard
     participant Engine as Simulation Engine
-    participant ML as ML Traffic Predictor
     participant MPC as MPC Planner (Beam Search)
     participant Twin as Digital Twin State
 
@@ -105,8 +104,6 @@ sequenceDiagram
     
     loop At Simulation Step k
         Engine->>Twin: Calculate Flow & BPR Delays: t = t_0 * (1 + 0.15 * (V/C)^4)
-        Engine->>ML: Pass Current Step Telemetry (Forecast link demand/congestion for UI)
-        
         alt Mode: Independent Optimization (Phase 5)
             Engine->>Engine: City A selects argmin c_A(a_A) locally
             Engine->>Engine: City B selects argmin c_B(a_B) locally
@@ -132,7 +129,7 @@ sequenceDiagram
 
 ## 3. Research Experiment Workflow Diagram
 
-Illustrates the rigorous empirical evaluation pipeline that compares optimization strategies under matched initial random seeds, calculates descriptive metrics, runs inferential statistical tests, and guarantees reproducibility:
+Illustrates the simulation-based evaluation pipeline that compares strategies under matched initial seeds, calculates descriptive metrics, and runs paired inferential tests:
 
 ```mermaid
 flowchart TD
@@ -176,33 +173,33 @@ flowchart TD
 
 ---
 
-## 4. Real-World Data Validation Workflow Diagram
+## 4. Traffic Data Comparison Workflow Diagram
 
-Illustrates the Phase 9 empirical data pipeline, verifying external sensor data compatibility, performing quality checks, mapping detectors to modeled roads, calibrating parameters, and computing empirical error metrics:
+Illustrates Phase 9 ingestion and comparison. The bundled benchmark is generated synthetic data; imported CSV/JSON source authenticity is not verified. Metrics describe agreement with the selected inputs, not real-world validation:
 
 ```mermaid
 flowchart TD
-    InputData["External Traffic Observation Source<br/>• CSV File Upload<br/>• JSON Payload<br/>• Caltrans PeMS Dual-Metro Benchmark"] --> ParseStage["Ingestion & Parsing<br/>• Detect Column Formats<br/>• Normalize Timestamps to ISO 8601 UTC"]
+    InputData["Traffic Data Input<br/>• User-provided CSV/JSON (unverified source)<br/>• Generated PeMS-schema-aligned synthetic benchmark"] --> ParseStage["Ingestion & Parsing<br/>• Detect Column Formats<br/>• Normalize Timestamps to ISO 8601 UTC"]
 
     ParseStage --> QualityCheck{"Data Quality & Hygiene Audit"}
     
-    QualityCheck -->|Negative Flow, Speed > 200, Occ > 1.0| Quarantine["Quarantine Buffer<br/>• Record Rejection Reason<br/>• Retain for Audit Log"]
+    QualityCheck -->|Negative Flow, Speed > 220 km/h, Occupancy > 100%| Quarantine["Quarantine Buffer<br/>• Record Rejection Reason<br/>• Retain for Audit Log"]
     QualityCheck -->|Duplicate (timestamp, sensor_id)| Dedup["Drop Duplicates<br/>Increment Duplicate Count"]
-    QualityCheck -->|Valid Measurement| ValidStore["Canonical Observation Store<br/>Tag: OBSERVED"]
+    QualityCheck -->|Valid Input| ValidStore["Canonical Input Store<br/>Generated benchmark: SIMULATED<br/>Imported records: source unverified"]
     
     ValidStore --> MapStage["Detector-to-Road Mapping Layer<br/>• Map Sensor ID to Modeled Road (A1-A10, B1-B10, Corridor)<br/>• Confidence Tag: Exact / Spatial / Heuristic"]
     
     MapStage --> ChronoSplit["Chronological Train/Validation Split<br/>(Default: 70% Calibration, 30% Holdout)"]
     
     subgraph CalibrationModule["Model Calibration (70% Split)"]
-        ChronoSplit -->|First 70% of Series| BoundedSearch["Bounded Grid Search<br/>• Demand Scale [0.5, 2.5]<br/>• Capacity Scale [0.6, 1.8]<br/>• Speed Factor [0.5, 1.5]<br/>• Corridor Cap Scale [0.5, 2.0]"]
-        BoundedSearch --> SelectBest["Select Parameters Minimizing<br/>L = MAE_flow + 2.0 * MAE_speed"]
+        ChronoSplit -->|First 70% of Timestamp-Sorted Records| BoundedSearch["Bounded Grid Search<br/>• Demand Scale [0.5, 2.0]<br/>• Capacity Scale [0.7, 1.5]<br/>• Corridor Capacity Scale [0.5, 1.8]<br/>• Speed Factor Fixed at 1.0"]
+        BoundedSearch --> SelectBest["Select Parameters Minimizing MAE<br/>for the Requested Metric"]
     end
     
     subgraph ValidationModule["Holdout Validation (30% Split)"]
-        ChronoSplit -->|Last 30% of Series| HoldoutData["Held-Out Real Observations (Unseen)"]
+        ChronoSplit -->|Last 30% of Records| HoldoutData["Synthetic Benchmark or Imported Records<br/>(source unverified)"]
         SelectBest --> SimCalib["Run Simulation with Calibrated Parameters"]
-        HoldoutData --> CompareEngine["Empirical Discrepancy Evaluator"]
+        HoldoutData --> CompareEngine["Input-to-Simulation Comparison"]
         SimCalib --> CompareEngine
         
         CompareEngine --> Metrics["Compute Error Metrics:<br/>• Mean Absolute Error (MAE)<br/>• Root Mean Squared Error (RMSE)<br/>• Safe MAPE (epsilon = 0.5)<br/>• Mean Signed Bias (over/under)<br/>• Pearson Correlation r (zero-variance safe)"]

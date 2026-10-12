@@ -28,7 +28,6 @@ from ..models.mpc_models import (
 from .simulation_engine import SimulationEngine
 from .independent_optimizer import ACTION_DEFINITIONS, NORM_OPERATIONAL_COST
 from .coordinated_optimizer import CoordinatedOptimizerService, NORM_INTERCITY_TRAVEL_TIME_MINS
-from .ai_predictor import ai_predictor
 
 NORM_TRAVEL_TIME_MINS = 30.0
 NORM_CONGESTION_PCT = 100.0
@@ -357,12 +356,12 @@ class MPCOptimizerService:
                 cvar_risk_metric=round(cvar_risk_metric, 4) if cvar_risk_metric is not None else None,
                 fallback_used=False,
                 fallback_reason=None,
-                used_ai_prediction=ai_predictor.is_trained
+                used_ai_prediction=False
             )
 
         except Exception as e:
             # Resilient Fallback to Phase 6 Coordinated Optimizer
-            best_pair, _, used_ai = self.fallback_service.evaluate_all_pairs(current_engine, weights=w)
+            best_pair, _, _ = self.fallback_service.evaluate_all_pairs(current_engine, weights=w)
             fallback_step = PlannedActionStep(
                 step_offset=0,
                 action_a=best_pair.action_a,
@@ -395,7 +394,7 @@ class MPCOptimizerService:
                 cumulative_discounted_cost=round(best_pair.total_combined_cost, 4),
                 fallback_used=True,
                 fallback_reason=f"MPC exception: {str(e)}. Safe fallback to Phase 6 Coordinated Optimizer applied.",
-                used_ai_prediction=used_ai
+                used_ai_prediction=False
             )
 
     def run_mpc_experiment(self, req: MPCRunRequest) -> MPCRunResponse:

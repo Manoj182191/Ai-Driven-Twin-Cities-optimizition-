@@ -57,7 +57,7 @@ def get_experiment_results(experiment_id: str):
                 detail=f"Experiment '{experiment_id}' is still in progress ({status.progress_pct}%)."
             )
         raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found.")
-    return exp
+    return experiment_runner.recalculate_saved_summaries(exp)
 
 
 @router.get("/experiments/{experiment_id}/statistics")
@@ -66,12 +66,13 @@ def get_experiment_statistics(experiment_id: str):
     exp = storage_service.get_experiment(experiment_id)
     if not exp:
         raise HTTPException(status_code=404, detail=f"Experiment '{experiment_id}' not found.")
+    refreshed = experiment_runner.recalculate_saved_summaries(exp)
     return {
-        "experiment_id": exp.experiment_id,
-        "name": exp.name,
-        "scenario_summaries": exp.scenario_summaries,
-        "computational_cost_summary": exp.computational_cost_summary,
-        "research_summary_text": exp.research_summary_text
+        "experiment_id": refreshed.experiment_id,
+        "name": refreshed.name,
+        "scenario_summaries": refreshed.scenario_summaries,
+        "computational_cost_summary": refreshed.computational_cost_summary,
+        "research_summary_text": refreshed.research_summary_text
     }
 
 
@@ -96,7 +97,8 @@ def export_experiment(experiment_id: str, format: str = Query("json", pattern="^
             headers={"Content-Disposition": f"attachment; filename={experiment_id}_results.csv"}
         )
     else:
-        json_content = storage_service.export_json(experiment_id)
+        refreshed = experiment_runner.recalculate_saved_summaries(exp)
+        json_content = refreshed.model_dump_json(indent=2)
         return Response(
             content=json_content,
             media_type="application/json",

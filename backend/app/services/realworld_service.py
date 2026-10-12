@@ -3,7 +3,6 @@ import csv
 import json
 import uuid
 import math
-import os
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict, Optional, Tuple, Any
 
@@ -36,7 +35,6 @@ class RealWorldDataService:
 
     def get_sources_info(self) -> List[DataSourceInfo]:
         """Returns the list of available data providers and their operational status."""
-        has_ext_api_key = bool(os.getenv("EXTERNAL_TRAFFIC_API_KEY"))
         return [
             DataSourceInfo(
                 source_id="csv_uploader",
@@ -45,7 +43,7 @@ class RealWorldDataService:
                 is_live_configured=True,
                 requires_credentials=False,
                 license_type="Public / Open License (User Provided)",
-                description="Ingests municipal traffic logs, loop detector records, and corridor telemetry in CSV format."
+                description="Ingests user-provided municipal traffic logs, loop detector records, and corridor telemetry in CSV format; source authenticity is not verified."
             ),
             DataSourceInfo(
                 source_id="json_importer",
@@ -54,39 +52,39 @@ class RealWorldDataService:
                 is_live_configured=True,
                 requires_credentials=False,
                 license_type="Public / Open License (User Provided)",
-                description="Accepts normalized JSON payloads from third-party or municipal APIs."
+                description="Accepts user-provided normalized JSON records; source authenticity is not verified."
             ),
             DataSourceInfo(
                 source_id="twin_cities_benchmark",
-                name="Twin Cities Metro Arterial Benchmark (PeMS-aligned)",
+                name="Synthetic Twin Cities Benchmark (PeMS-schema-aligned)",
                 source_type=DataSourceType.BENCHMARK_SAMPLE,
                 is_live_configured=True,
                 requires_credentials=False,
-                license_type="CC0 / Open Municipal Data",
-                description="Curated 48-step calibrated empirical baseline representing dual-metro arterial commute traffic."
+                license_type="Synthetic sample; no external data source",
+                description="Formula-generated benchmark with 48 hourly intervals per sensor, aligned to a PeMS-like schema; not external observations."
             ),
             DataSourceInfo(
                 source_id="corridor_sensor_benchmark",
-                name="Regional Intercity Corridor Sensor Benchmark",
+                name="Synthetic Intercity Corridor Benchmark",
                 source_type=DataSourceType.BENCHMARK_SAMPLE,
                 is_live_configured=True,
                 requires_credentials=False,
-                license_type="CC-BY-4.0",
-                description="High-frequency radar and toll tag observations along the primary intercity transit link."
+                license_type="Synthetic sample; no external data source",
+                description="Synthetic corridor benchmark metadata; no radar or toll-tag observations are bundled."
             ),
             DataSourceInfo(
                 source_id="external_municipal_api",
-                name="External Municipal Traffic API Gateway",
+                name="External Municipal API Connector (not implemented)",
                 source_type=DataSourceType.EXTERNAL_API,
-                is_live_configured=has_ext_api_key,
+                is_live_configured=False,
                 requires_credentials=True,
                 license_type="Government Open Data Terms",
-                description="Live sensor feed connector. If no EXTERNAL_TRAFFIC_API_KEY is configured, the system cleanly defaults to synthetic/benchmark mode."
+                description="Reserved source entry only; this application does not fetch live municipal traffic data. Use CSV/JSON import for user-supplied records."
             )
         ]
 
     def _initialize_benchmark_datasets(self):
-        """Populates high-fidelity benchmark datasets for development, testing, and calibration."""
+        """Populates a formula-generated benchmark for development, testing, and calibration."""
         # 1. Twin Cities Arterial Benchmark (48 steps, 2 days of diurnal cycle)
         base_time = datetime(2026, 10, 1, 0, 0, tzinfo=timezone.utc)
         benchmark_records: List[TrafficObservationRecord] = []
@@ -114,7 +112,7 @@ class RealWorldDataService:
                 notes=f"Mapped to simulated link {road_id} based on geometry and capacity alignment."
             ))
 
-            # Generate 48 time steps of empirical ground truth with diurnal oscillations
+            # Generate 48 synthetic time steps with diurnal oscillations.
             for step in range(48):
                 hour = step % 24
                 # Morning peak at hour 7, Evening peak at hour 17
@@ -146,8 +144,8 @@ class RealWorldDataService:
                     queue_length=queue,
                     weather_condition="Clear",
                     incident_reported=(step == 18 and s_id == "SENSOR_IC_CORRIDOR"),
-                    source_name="Twin Cities Regional PeMS Benchmark",
-                    data_origin=DataOriginTag.OBSERVED,
+                    source_name="Synthetic Twin Cities PeMS-schema benchmark",
+                    data_origin=DataOriginTag.SIMULATED,
                     ingestion_timestamp=ingest_time
                 ))
 
@@ -165,10 +163,10 @@ class RealWorldDataService:
 
         metadata = DatasetMetadata(
             dataset_id=ds_id,
-            name="Twin Cities Metro Arterial Benchmark (PeMS-aligned)",
-            source_name="Twin Cities Regional PeMS Benchmark",
+            name="Synthetic Twin Cities Benchmark (PeMS-schema-aligned)",
+            source_name="Synthetic Twin Cities PeMS-schema benchmark",
             source_type=DataSourceType.BENCHMARK_SAMPLE,
-            description="Empirically aligned multi-metro baseline dataset with 48 hourly observations across 6 key arterial corridors.",
+            description="Formula-generated synthetic records: 48 hourly intervals at each of 6 locations. No external traffic observations are included.",
             created_at=ingest_time,
             record_count=len(benchmark_records),
             quality_report=report,

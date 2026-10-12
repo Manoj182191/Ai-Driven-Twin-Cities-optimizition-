@@ -158,32 +158,41 @@ export const ResearchEvaluationPage: React.FC = () => {
 
   const currentSummary: ScenarioStatisticalSummary | undefined =
     activeExp?.scenario_summaries?.[activeScenarioTab];
+  const hasMpcResults = (currentSummary?.descriptive_by_strategy?.mpc?.system_avg_travel_time?.sample_size ?? 0) > 0;
+  const formatPValue = (value: number | null) => {
+    if (value === null) return 'N/A';
+    return value < 0.0001 ? value.toExponential(2) : value.toFixed(4);
+  };
 
   // Prepare chart data comparing strategies on primary metrics
   const primaryChartData = currentSummary ? [
     {
-      metric: 'Travel Time (mins)',
+      metric: 'System Travel Time (min)',
       Unoptimized: currentSummary.descriptive_by_strategy?.unoptimized?.system_avg_travel_time?.mean || 0,
       Independent: currentSummary.descriptive_by_strategy?.independent?.system_avg_travel_time?.mean || 0,
-      Coordinated: currentSummary.descriptive_by_strategy?.coordinated?.system_avg_travel_time?.mean || 0
+      Coordinated: currentSummary.descriptive_by_strategy?.coordinated?.system_avg_travel_time?.mean || 0,
+      MPC: hasMpcResults ? currentSummary.descriptive_by_strategy.mpc.system_avg_travel_time.mean : undefined
     },
     {
-      metric: 'Congestion (%)',
+      metric: 'System Congestion (%)',
       Unoptimized: currentSummary.descriptive_by_strategy?.unoptimized?.system_avg_congestion?.mean || 0,
       Independent: currentSummary.descriptive_by_strategy?.independent?.system_avg_congestion?.mean || 0,
-      Coordinated: currentSummary.descriptive_by_strategy?.coordinated?.system_avg_congestion?.mean || 0
+      Coordinated: currentSummary.descriptive_by_strategy?.coordinated?.system_avg_congestion?.mean || 0,
+      MPC: hasMpcResults ? currentSummary.descriptive_by_strategy.mpc.system_avg_congestion.mean : undefined
     },
     {
-      metric: 'Queue (veh)',
+      metric: 'System Mean Queue (vehicles)',
       Unoptimized: currentSummary.descriptive_by_strategy?.unoptimized?.system_avg_queue_length?.mean || 0,
       Independent: currentSummary.descriptive_by_strategy?.independent?.system_avg_queue_length?.mean || 0,
-      Coordinated: currentSummary.descriptive_by_strategy?.coordinated?.system_avg_queue_length?.mean || 0
+      Coordinated: currentSummary.descriptive_by_strategy?.coordinated?.system_avg_queue_length?.mean || 0,
+      MPC: hasMpcResults ? currentSummary.descriptive_by_strategy.mpc.system_avg_queue_length.mean : undefined
     },
     {
-      metric: 'Objective Cost (x100)',
+      metric: 'Objective Cost (score x100)',
       Unoptimized: (currentSummary.descriptive_by_strategy?.unoptimized?.system_objective_cost?.mean || 0) * 100,
       Independent: (currentSummary.descriptive_by_strategy?.independent?.system_objective_cost?.mean || 0) * 100,
-      Coordinated: (currentSummary.descriptive_by_strategy?.coordinated?.system_objective_cost?.mean || 0) * 100
+      Coordinated: (currentSummary.descriptive_by_strategy?.coordinated?.system_objective_cost?.mean || 0) * 100,
+      MPC: hasMpcResults ? currentSummary.descriptive_by_strategy.mpc.system_objective_cost.mean * 100 : undefined
     }
   ] : [];
 
@@ -647,10 +656,10 @@ export const ResearchEvaluationPage: React.FC = () => {
       {primaryChartData.length > 0 && (
         <div className="glass-panel-elevated" style={{ padding: '1.25rem 1.5rem' }}>
           <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#f8fafc', marginBottom: '0.5rem' }}>
-            Empirical Comparison Across Primary Network Metrics
+            Matched-Seed Strategy Comparison (Synthetic Simulation)
           </h3>
           <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '1.25rem' }}>
-            Mean performance across matched seeds for {currentSummary?.scenario.toUpperCase()} scenario.
+            Mean performance for the {currentSummary?.scenario.toUpperCase()} scenario. Labels show each metric's unit; objective cost is scaled by 100 for display.
           </p>
 
           <div style={{ height: '320px', width: '100%' }}>
@@ -667,6 +676,7 @@ export const ResearchEvaluationPage: React.FC = () => {
                 <Bar dataKey="Unoptimized" fill="#64748b" name="Unoptimized Baseline" />
                 <Bar dataKey="Independent" fill="#0284c7" name="Phase 5 Independent" />
                 <Bar dataKey="Coordinated" fill="#10b981" name="Phase 6 Coordinated" />
+                {hasMpcResults && <Bar dataKey="MPC" fill="#f59e0b" name="Phase 8 MPC" />}
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -682,7 +692,7 @@ export const ResearchEvaluationPage: React.FC = () => {
                 Paired Statistical Hypothesis Testing (Phase 6 vs. Phase 5)
               </h3>
               <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                Paired t-test, Wilcoxon signed-rank test, Cohen's dz effect size, and Holm-Bonferroni FWER correction.
+                Raw paired t-test p-values, Holm-adjusted p-values within this scenario, paired confidence intervals, and Cohen's dz effect size.
               </p>
             </div>
             <span style={{ fontSize: '0.75rem', background: 'rgba(139, 92, 246, 0.15)', color: '#a78bfa', padding: '4px 8px', borderRadius: '4px', fontWeight: 600 }}>
@@ -701,6 +711,7 @@ export const ResearchEvaluationPage: React.FC = () => {
                   <th style={{ padding: '8px' }}>Improvement (%)</th>
                   <th style={{ padding: '8px' }}>Paired 95% CI</th>
                   <th style={{ padding: '8px' }}>t-stat</th>
+                  <th style={{ padding: '8px' }}>Raw t-test p</th>
                   <th style={{ padding: '8px' }}>Holm Adj p-val</th>
                   <th style={{ padding: '8px' }}>Cohen's dz</th>
                   <th style={{ padding: '8px' }}>Significance Verdict</th>
@@ -736,8 +747,11 @@ export const ResearchEvaluationPage: React.FC = () => {
                     <td style={{ padding: '10px 8px', color: '#cbd5e1', fontFamily: 'monospace' }}>
                       {cmp.t_statistic !== null ? cmp.t_statistic.toFixed(3) : 'N/A'}
                     </td>
+                    <td style={{ padding: '10px 8px', color: '#94a3b8', fontFamily: 'monospace' }}>
+                      {formatPValue(cmp.p_value_parametric)}
+                    </td>
                     <td style={{ padding: '10px 8px', fontFamily: 'monospace', fontWeight: 600, color: cmp.p_value_adjusted_holm !== null && cmp.p_value_adjusted_holm < 0.05 ? '#10b981' : '#94a3b8' }}>
-                      {cmp.p_value_adjusted_holm !== null ? cmp.p_value_adjusted_holm.toFixed(4) : 'N/A'}
+                      {formatPValue(cmp.p_value_adjusted_holm)}
                     </td>
                     <td style={{ padding: '10px 8px', color: '#cbd5e1', fontFamily: 'monospace' }}>
                       {cmp.effect_size_cohen_dz !== null ? cmp.effect_size_cohen_dz.toFixed(3) : 'N/A'}

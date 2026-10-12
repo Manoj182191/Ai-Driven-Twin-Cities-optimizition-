@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -17,6 +18,11 @@ from app.services.research_experiment_runner import experiment_runner
 from app.services.research_storage import storage_service
 
 client = TestClient(app)
+
+
+@pytest.fixture
+def isolated_research_storage(tmp_path, monkeypatch):
+    monkeypatch.setattr(storage_service, "data_dir", str(tmp_path))
 
 
 def test_descriptive_statistics_and_confidence_intervals():
@@ -86,6 +92,66 @@ def test_paired_comparison_and_zero_denominator_safety():
     assert zero_cmp.mean_improvement_pct is None  # Handled safely as None, not crashing or inf
 
 
+def test_paired_comparison_preserves_small_raw_p_values():
+    baseline = [10.0, 20.0, 30.0, 40.0, 50.0]
+    target = [9.0, 18.99, 29.01, 38.98, 49.02]
+
+    comparison = compute_paired_comparison(
+        metric_id="small_p",
+        metric_name="Small p-value",
+        unit="pts",
+        higher_is_better=False,
+        comparison_type="test",
+        baseline_strategy=OptimizationStrategy.INDEPENDENT,
+        target_strategy=OptimizationStrategy.COORDINATED,
+        baseline_values=baseline,
+        target_values=target
+    )
+
+    assert comparison.p_value_parametric is not None
+    assert 0.0 < comparison.p_value_parametric < 1e-6
+    assert comparison.p_value_adjusted_holm is None
+
+
+def test_holm_correction_treats_zero_as_valid_and_excludes_missing_values():
+    comparisons = []
+    for metric_id, p_value in (("zero", 0.0), ("tie_a", 0.001), ("tie_b", 0.001), ("last", 0.03)):
+        comparison = compute_paired_comparison(
+            metric_id=metric_id,
+            metric_name=metric_id,
+            unit="pts",
+            higher_is_better=False,
+            comparison_type="test",
+            baseline_strategy=OptimizationStrategy.INDEPENDENT,
+            target_strategy=OptimizationStrategy.COORDINATED,
+            baseline_values=[10.0, 12.0, 14.0],
+            target_values=[9.0, 11.0, 13.0]
+        )
+        comparison.p_value_parametric = p_value
+        comparisons.append(comparison)
+
+    unavailable = compute_paired_comparison(
+        metric_id="unavailable",
+        metric_name="Unavailable",
+        unit="pts",
+        higher_is_better=False,
+        comparison_type="test",
+        baseline_strategy=OptimizationStrategy.INDEPENDENT,
+        target_strategy=OptimizationStrategy.COORDINATED,
+        baseline_values=[10.0, 12.0, 14.0],
+        target_values=[10.0, 12.0, 14.0]
+    )
+    adjusted = apply_holm_bonferroni(comparisons + [unavailable])
+    adjusted_by_id = {comparison.metric_id: comparison for comparison in adjusted}
+
+    assert adjusted_by_id["zero"].p_value_adjusted_holm == 0.0
+    assert adjusted_by_id["tie_a"].p_value_adjusted_holm == 0.003
+    assert adjusted_by_id["tie_b"].p_value_adjusted_holm == 0.003
+    assert adjusted_by_id["last"].p_value_adjusted_holm == 0.03
+    assert adjusted_by_id["unavailable"].p_value_adjusted_holm is None
+    assert adjusted_by_id["unavailable"].is_statistically_significant is False
+
+
 def test_holm_bonferroni_multiple_testing_correction():
     """Verifies that step-down Holm-Bonferroni strictly controls family-wise error rate."""
     comp1 = compute_paired_comparison("m1", "M1", "%", False, "t", OptimizationStrategy.INDEPENDENT, OptimizationStrategy.COORDINATED, [10, 12, 14], [9, 11, 13])
@@ -102,7 +168,7 @@ def test_holm_bonferroni_multiple_testing_correction():
     assert adjusted[1].is_statistically_significant is True
 
 
-def test_matched_tri_strategy_experiment_execution():
+def test_matched_tri_strategy_experiment_execution(isolated_research_storage):
     """Verifies that all three strategies (unoptimized, independent, coordinated) run on matched states."""
     config = ExperimentConfigRequest(
         name="Unit Test Small Experiment",
@@ -143,7 +209,7 @@ def test_matched_tri_strategy_experiment_execution():
     assert unopt_seed100.system_objective_cost > 0
 
 
-def test_experiment_reproducibility():
+def test_experiment_reproducibility(isolated_research_storage):
     """Verifies identical outcomes across two independent executions with identical seed and config."""
     config1 = ExperimentConfigRequest(
         name="Reproducibility Run 1",
@@ -174,7 +240,7 @@ def test_experiment_reproducibility():
     assert exp1.run_records[0].system_avg_queue_length == exp2.run_records[0].system_avg_queue_length
 
 
-def test_research_api_endpoints_and_exports():
+def test_research_api_endpoints_and_exports(isolated_research_storage):
     """Verifies all API routes: run, status, results, statistics, history, export CSV/JSON."""
     # 1. Run validation
     invalid_res = client.post("/api/research/experiments/run", json={"num_seeds": 0})
@@ -227,3 +293,32 @@ def test_research_api_endpoints_and_exports():
     json_res = client.get(f"/api/research/experiments/{exp_id}/export?format=json")
     assert json_res.status_code == 200
     assert json_res.json()["experiment_id"] == exp_id
+
+
+def test_saved_experiment_statistics_refresh_without_rewriting_archive():
+    experiment_id = "EXP-B1F1EEB4"
+    archive_path = Path(storage_service.data_dir) / f"{experiment_id}.json"
+    archived_bytes = archive_path.read_bytes()
+
+    results = client.get(f"/api/research/experiments/{experiment_id}/results")
+    assert results.status_code == 200
+    normal_results = results.json()["scenario_summaries"]["normal"]["paired_comparisons"]
+    queue_result = next(c for c in normal_results if c["metric_id"] == "system_avg_queue_length")
+    assert queue_result["p_value_parametric"] == pytest.approx(0.0027842136509917603)
+    assert queue_result["p_value_adjusted_holm"] == pytest.approx(0.01600213105594584)
+
+    statistics = client.get(f"/api/research/experiments/{experiment_id}/statistics")
+    assert statistics.status_code == 200
+    statistics_queue = next(
+        c for c in statistics.json()["scenario_summaries"]["normal"]["paired_comparisons"]
+        if c["metric_id"] == "system_avg_queue_length"
+    )
+    assert statistics_queue["p_value_adjusted_holm"] == pytest.approx(0.01600213105594584)
+    exported = client.get(f"/api/research/experiments/{experiment_id}/export?format=json")
+    assert exported.status_code == 200
+    exported_queue = next(
+        c for c in exported.json()["scenario_summaries"]["normal"]["paired_comparisons"]
+        if c["metric_id"] == "system_avg_queue_length"
+    )
+    assert exported_queue["p_value_adjusted_holm"] == pytest.approx(0.01600213105594584)
+    assert archive_path.read_bytes() == archived_bytes

@@ -166,6 +166,17 @@ export const RealWorldValidationPage: React.FC = () => {
 
   const meta = datasetDetails?.metadata;
   const quality = meta?.quality_report;
+  const isSyntheticBenchmark = meta?.source_type === 'benchmark_sample';
+  const provenanceLabel = isSyntheticBenchmark
+    ? 'Generated synthetic benchmark; not external observations'
+    : meta?.source_type === 'csv_upload' || meta?.source_type === 'json_import'
+      ? 'User-provided data; source not independently verified'
+      : meta?.source_type === 'external_api'
+        ? 'External feed; source not independently verified'
+        : 'Source provenance unavailable';
+  const inputSeriesLabel = isSyntheticBenchmark
+    ? 'Synthetic benchmark input'
+    : 'Imported input (source unverified)';
 
   return (
     <div className="space-y-6 pb-12">
@@ -179,7 +190,7 @@ export const RealWorldValidationPage: React.FC = () => {
                 <Database className="w-3.5 h-3.5" /> PHASE 9 ACTIVE
               </span>
               <span className="px-2.5 py-1 bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 rounded-full text-xs font-semibold tracking-wide flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5" /> Empirical Digital Twin Validation
+                <Sparkles className="w-3.5 h-3.5" /> {isSyntheticBenchmark ? 'Synthetic Benchmark' : 'Imported Traffic Data'}
               </span>
               {loading && (
                 <span className="px-2.5 py-1 bg-slate-800 text-slate-400 rounded-full text-xs font-mono">
@@ -193,11 +204,10 @@ export const RealWorldValidationPage: React.FC = () => {
               )}
             </div>
             <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
-              Real-World Traffic Data Integration & Calibration
+              Traffic Data Calibration & Simulation Comparison
             </h1>
             <p className="text-slate-400 text-sm mt-1 max-w-3xl">
-              Ingests municipal CSV logs and loop detector benchmarks across {sources.length} configured data providers, performs strict data-quality and quarantine audits,
-              transparently maps external sensor feeds to City A, City B, and corridor roads, and runs chronological parameter calibration to validate model fidelity.
+              {sources.length} registered source entries. Ingests CSV/JSON records and a generated PeMS-schema-aligned benchmark, audits data quality, maps locations to simulated roads, and compares input records with simulation outputs. Imported data sources are not independently verified.
             </p>
           </div>
 
@@ -246,7 +256,7 @@ export const RealWorldValidationPage: React.FC = () => {
               </span>
               <span className="text-slate-600">&bull;</span>
               <span className="text-slate-400">
-                Provenance: <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded font-mono">{meta.source_type}</span>
+                Provenance: <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded">{provenanceLabel}</span>
               </span>
               <span className="text-slate-600">&bull;</span>
               <a
@@ -271,7 +281,7 @@ export const RealWorldValidationPage: React.FC = () => {
           }`}
         >
           <Activity className="w-4 h-4" />
-          Empirical Validation Dashboard & Model Discrepancy
+          Data Comparison Dashboard & Model Discrepancy
         </button>
         <button
           onClick={() => setActiveSubTab('quality_mapping')}
@@ -297,7 +307,7 @@ export const RealWorldValidationPage: React.FC = () => {
         </button>
       </div>
 
-      {/* SUB-TAB 1: EMPIRICAL VALIDATION DASHBOARD */}
+      {/* SUB-TAB 1: DATA COMPARISON DASHBOARD */}
       {activeSubTab === 'overview' && validationReport && (
         <div className="space-y-6">
           {/* Validation Metrics Cards */}
@@ -340,12 +350,12 @@ export const RealWorldValidationPage: React.FC = () => {
                 <span className="text-xl font-bold text-purple-400">{validationReport.calibrated_model_metrics.pearson_correlation}</span>
               </div>
               <span className="text-[10px] text-purple-400/80 mt-1 block">
-                Empirical Co-movement
+                Agreement with input records
               </span>
             </div>
 
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5 shadow">
-              <span className="text-slate-400 text-xs block">Validation Status</span>
+                <span className="text-slate-400 text-xs block">Comparison Status</span>
               <span className="text-sm font-semibold text-emerald-400 mt-1 block uppercase">
                 {validationReport.validation_status.replace('_', ' ')}
               </span>
@@ -355,22 +365,22 @@ export const RealWorldValidationPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Observed vs Simulated Trajectory Comparison Chart */}
+          {/* Input Records vs Simulated Trajectory Comparison Chart */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 gap-2">
               <div>
                 <h3 className="text-base font-bold text-white flex items-center gap-2">
                   <Activity className="w-4 h-4 text-emerald-400" />
-                  Observed Ground Truth vs. Digital Twin Simulation
+                  Input Records vs. Digital Twin Simulation
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Chronological travel-time alignment comparing empirical sensor ground truth against uncalibrated default model and calibrated digital twin.
+                  Travel-time comparison between selected dataset records, the default simulation, and the calibrated simulation. Synthetic benchmark values are generated, not observed traffic.
                 </p>
               </div>
 
               <div className="flex items-center gap-3 text-xs">
                 <span className="flex items-center gap-1 text-emerald-400">
-                  <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full" /> Observed Ground Truth
+                  <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full" /> {inputSeriesLabel}
                 </span>
                 <span className="flex items-center gap-1 text-cyan-400">
                   <span className="w-2.5 h-2.5 bg-cyan-500 rounded-full" /> Calibrated Digital Twin
@@ -388,15 +398,15 @@ export const RealWorldValidationPage: React.FC = () => {
                   <XAxis dataKey="timestamp" stroke="#64748b" tick={{ fontSize: 10 }} tickFormatter={(ts) => ts.split('T')[1]?.substring(0, 5) || ts} />
                   <YAxis stroke="#64748b" tick={{ fontSize: 10 }} />
                   <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }} />
-                  <Line type="monotone" dataKey="observed" name="Observed (Real)" stroke="#10b981" strokeWidth={2.5} dot={{ r: 2 }} />
-                  <Line type="monotone" dataKey="calibrated_sim" name="Calibrated Sim" stroke="#06b6d4" strokeWidth={2} strokeDasharray="4 4" dot={false} />
-                  <Line type="monotone" dataKey="uncalibrated_sim" name="Uncalibrated Sim" stroke="#64748b" strokeWidth={1.5} dot={false} />
+                  <Line type="monotone" dataKey="observed" name={inputSeriesLabel} stroke="#10b981" strokeWidth={2.5} dot={{ r: 2 }} />
+                  <Line type="monotone" dataKey="calibrated_sim" name="Calibrated simulation (min)" stroke="#06b6d4" strokeWidth={2} strokeDasharray="4 4" dot={false} />
+                  <Line type="monotone" dataKey="uncalibrated_sim" name="Default simulation (min)" stroke="#64748b" strokeWidth={1.5} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Per-Road Empirical Accuracy Table */}
+          {/* Per-Road Comparison Table */}
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               <Layers className="w-4 h-4 text-cyan-400" />
@@ -483,7 +493,7 @@ export const RealWorldValidationPage: React.FC = () => {
                   Network Road Segment Mapping Layer
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Explicit association between empirical observation location IDs and synthetic twin roads.
+                  Explicit association between input location IDs and synthetic twin roads.
                 </p>
               </div>
               <span className="text-xs px-2.5 py-1 bg-slate-800 text-slate-300 rounded border border-slate-700">
@@ -561,7 +571,7 @@ export const RealWorldValidationPage: React.FC = () => {
                 Simulation Parameter Calibration Workflow
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Adjusts baseline vehicle demand and road capacity parameters to minimize discrepancy between observed ground truth and simulated digital twins.
+                Adjusts model parameters to minimize discrepancy between selected input records and simulated digital-twin outputs.
               </p>
             </div>
 

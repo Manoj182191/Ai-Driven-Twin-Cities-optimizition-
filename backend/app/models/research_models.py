@@ -68,7 +68,7 @@ class RunMetricRecord(BaseModel):
     intercity_queue_length: float
     total_intervention_cost: float = Field(..., description="Total intervention/budget cost (points)")
     total_vehicles_served: int = Field(..., description="Active vehicles processed across network")
-    optimization_execution_time_ms: float = Field(..., description="Optimization computation time in milliseconds")
+    optimization_execution_time_ms: float = Field(..., description="Wall-clock runtime for the complete strategy run in milliseconds")
 
 
 class DescriptiveStatistics(BaseModel):

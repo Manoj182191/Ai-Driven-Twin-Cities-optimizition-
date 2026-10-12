@@ -1,5 +1,6 @@
 import pytest
 from app.services.simulation_engine import SimulationEngine
+from app.services.ai_predictor import ai_predictor
 from app.models.simulation_models import DemandLevel
 from app.models.optimization_models import OptimizationActionType
 from app.models.mpc_models import (
@@ -76,6 +77,23 @@ def test_mpc_state_isolation():
     assert engine.current_step == initial_step
     assert engine.city_a.active_vehicles == initial_active_a
     assert engine.city_b.active_vehicles == initial_active_b
+
+
+def test_mpc_does_not_report_a_trained_but_unused_model_as_used(monkeypatch):
+    monkeypatch.setattr(ai_predictor, "is_trained", True)
+    engine = SimulationEngine(seed=42, demand_level=DemandLevel.NORMAL)
+
+    decision = mpc_optimizer.plan_decision(
+        current_engine=engine,
+        decision_step=0,
+        planning_horizon=2,
+        beam_width=2,
+        max_search_budget=75,
+        planning_mode=PlanningMode.NOMINAL
+    )
+
+    assert decision.fallback_used is False
+    assert decision.used_ai_prediction is False
 
 def test_mpc_receding_horizon_experiment():
     """Verify receding horizon execution runs H steps, executing only 1st action per replan."""

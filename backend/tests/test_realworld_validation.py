@@ -13,7 +13,8 @@ from app.models.realworld_models import (
     CalibrationRequest,
     CalibrationParameterBounds,
     NetworkRoadMapping,
-    DataSourceType
+    DataSourceType,
+    DataOriginTag
 )
 
 client = TestClient(app)
@@ -30,6 +31,9 @@ def test_sources_endpoint_and_secrets_safety():
     assert "csv_uploader" in source_ids
     assert "twin_cities_benchmark" in source_ids
     assert "external_municipal_api" in source_ids
+    external_source = next(s for s in sources if s["source_id"] == "external_municipal_api")
+    assert external_source["is_live_configured"] is False
+    assert "does not fetch live" in external_source["description"]
     
     # Secrets safety check: no token/password in response
     resp_text = json.dumps(sources).lower()
@@ -49,6 +53,21 @@ def test_benchmark_dataset_preloaded():
     assert "Twin Cities" in ds["name"]
     assert ds["record_count"] >= 40
     assert len(ds["active_mappings"]) > 0
+
+
+def test_generated_benchmark_has_synthetic_provenance_and_disclaimer():
+    dataset_id = "DATASET-BENCHMARK-TC-01"
+    metadata = realworld_data_service.datasets[dataset_id]
+    records = realworld_data_service.dataset_records[dataset_id]
+
+    assert metadata.source_type == DataSourceType.BENCHMARK_SAMPLE
+    assert records
+    assert all(record.data_origin == DataOriginTag.SIMULATED for record in records)
+
+    report = calibration_service.validate_dataset(dataset_id)
+    assert "synthetic benchmark" in report.academic_disclaimer.lower()
+    assert "not external sensor telemetry" in report.academic_disclaimer.lower()
+    assert report.dataset_provenance["data_origins"] == [DataOriginTag.SIMULATED.value]
 
 
 def test_csv_upload_ingestion_and_quality():

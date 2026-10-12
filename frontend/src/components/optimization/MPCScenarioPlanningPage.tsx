@@ -639,8 +639,10 @@ export const MPCScenarioPlanningPage: React.FC = () => {
                       <span className="font-semibold text-slate-200 font-mono">{currentDecision.total_candidate_evaluations}</span>
                     </div>
                     <div>
-                      <span className="text-slate-400 block text-[11px]">AI Model Used</span>
-                      <span className="font-semibold text-emerald-400">{currentDecision.used_ai_prediction ? 'Yes' : 'Fallback'}</span>
+                      <span className="text-slate-400 block text-[11px]">ML Predictions Used</span>
+                      <span className={`font-semibold ${currentDecision.used_ai_prediction ? 'text-emerald-400' : 'text-slate-300'}`}>
+                        {currentDecision.used_ai_prediction ? 'Yes' : 'No; MPC uses simulation rollouts'}
+                      </span>
                     </div>
                   </div>
                 </div>

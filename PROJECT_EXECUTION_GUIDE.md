@@ -55,7 +55,7 @@ npm run dev
 ## 3. Running Automated Tests
 
 ```bash
-# Run all 57 backend automated tests (Phases 1-9)
+# Run the full backend test suite (62 tests at the latest audit)
 cd backend
 python -m pytest -v
 
@@ -111,12 +111,12 @@ Follow these steps to demonstrate the platform to a reviewer:
 3. Review the **Executive Findings Narrative**, paired t-test $p$-values, Wilcoxon signed-rank tests, Cohen's $d_z$ effect sizes, and Holm-Bonferroni corrections.
 4. Click **Export JSON** or **Export CSV** to demonstrate reproducible data export.
 
-### Step 6: Real-World Data & Calibration
-1. Click **Real-World Data & Validation**.
-2. Select the reference dataset `DATASET-BENCHMARK-TC-01` (PeMS-aligned).
-3. Point out the **Data Quality Summary** (48 intervals, 0 quarantined, explicit provenance tags).
-4. Click **Run Model Calibration** with a 70% holdout split.
-5. Show the validation scorecard displaying empirical error reduction and high Pearson correlation ($r = 0.941$).
+### Step 6: Traffic Data & Synthetic Benchmark Calibration
+1. Click **Traffic Data Calibration & Simulation Comparison**.
+2. Select `DATASET-BENCHMARK-TC-01`, the generated PeMS-schema-aligned synthetic benchmark (288 records across six locations).
+3. Point out the provenance label: these are generated values, not external sensor observations.
+4. Run calibration with a 70% chronological record split and describe its metrics as agreement with this synthetic benchmark only.
+5. For uploaded CSV/JSON data, verify provenance independently; the application does not authenticate the source.
 
 ---
 

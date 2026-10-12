@@ -234,6 +234,28 @@ export const AIPredictionsPage: React.FC<AIPredictionsPageProps> = ({ onStateUpd
               }}>
                 Phase 4 Complete
               </span>
+              <span style={{
+                background: 'rgba(245, 158, 11, 0.15)',
+                color: '#fbbf24',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '4px',
+                textTransform: 'uppercase'
+              }}>
+                Simulated inputs
+              </span>
+              <span style={{
+                background: 'rgba(56, 189, 248, 0.15)',
+                color: '#38bdf8',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '4px',
+                textTransform: 'uppercase'
+              }}>
+                Random Forest predictions
+              </span>
               <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#f8fafc' }}>
                 AI-Driven Traffic Demand & Congestion Forecaster
               </h2>
