@@ -1,0 +1,13 @@
+{
+  "experiment_id": "EXP-614E37B4",
+  "name": "Reproducibility Run 1",
+  "status": "failed",
+  "progress_pct": 0.0,
+  "completed_runs": 0,
+  "total_expected_runs": 3,
+  "current_scenario": "normal",
+  "current_seed": 555,
+  "created_at": "2026-10-12T13:23:34.342896+00:00",
+  "completed_at": null,
+  "error_message": "'CityState' object has no attribute 'summary'"
+}

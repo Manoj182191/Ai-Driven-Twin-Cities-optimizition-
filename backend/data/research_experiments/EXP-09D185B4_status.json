@@ -1,0 +1,13 @@
+{
+  "experiment_id": "EXP-09D185B4",
+  "name": "Unit Test Small Experiment",
+  "status": "completed",
+  "progress_pct": 100.0,
+  "completed_runs": 6,
+  "total_expected_runs": 6,
+  "current_scenario": null,
+  "current_seed": null,
+  "created_at": "2026-10-12T13:40:32.218047+00:00",
+  "completed_at": "2026-10-12T13:40:32.892205+00:00",
+  "error_message": null
+}

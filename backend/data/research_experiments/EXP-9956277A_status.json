@@ -1,0 +1,13 @@
+{
+  "experiment_id": "EXP-9956277A",
+  "name": "Unit Test Small Experiment",
+  "status": "failed",
+  "progress_pct": 0.0,
+  "completed_runs": 0,
+  "total_expected_runs": 6,
+  "current_scenario": "normal",
+  "current_seed": 100,
+  "created_at": "2026-10-12T13:23:34.059462+00:00",
+  "completed_at": null,
+  "error_message": "'CityState' object has no attribute 'summary'"
+}

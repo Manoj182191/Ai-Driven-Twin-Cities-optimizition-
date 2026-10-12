@@ -1,0 +1,13 @@
+{
+  "experiment_id": "EXP-B44A493B",
+  "name": "Reproducibility Run 1",
+  "status": "completed",
+  "progress_pct": 100.0,
+  "completed_runs": 3,
+  "total_expected_runs": 3,
+  "current_scenario": null,
+  "current_seed": null,
+  "created_at": "2026-10-12T13:29:43.129108+00:00",
+  "completed_at": "2026-10-12T13:29:43.404743+00:00",
+  "error_message": null
+}

@@ -1,0 +1,13 @@
+{
+  "experiment_id": "EXP-38B6AE40",
+  "name": "debug",
+  "status": "failed",
+  "progress_pct": 33.3,
+  "completed_runs": 1,
+  "total_expected_runs": 3,
+  "current_scenario": "normal",
+  "current_seed": 42,
+  "created_at": "2026-10-12T13:27:38.800321+00:00",
+  "completed_at": null,
+  "error_message": "'OptimizationActionType' object has no attribute 'action_type'"
+}
