@@ -15,7 +15,7 @@ The platform models traffic dynamics using macroscopic Bureau of Public Roads (B
 2. **Joint Coordinated Optimization (Phase 6)**: Centralized optimization evaluating all 25 cross-city action combinations under shared corridor and budget constraints.
 3. **Multi-Step Model Predictive Control (Phase 8)**: Forward-looking receding-horizon planning ($H=3$) utilizing Bounded Beam Search to evaluate multi-step action sequences under demand uncertainty.
 
-The system also integrates an empirical real-world data layer (Phase 9) that ingests municipal traffic feeds, validates data quality, maps sensors to network links, and calibrates simulation parameters against real Caltrans PeMS observations.
+The system also integrates an empirical real-world data layer (Phase 9) that ingests municipal traffic feeds, validates data quality, maps sensors to network links, and calibrates simulation parameters against a standardized Caltrans PeMS-aligned benchmark dataset (`DATASET-BENCHMARK-TC-01`), with support for custom external CSV/JSON uploads.
 
 ---
 
@@ -320,21 +320,23 @@ An unrestricted forward tree over $H=3$ steps produces $25^3 = 15,625$ candidate
 ### Measured Empirical Data Across Scenarios
 
 #### Peak Demand Scenario (High Stress)
-- **Unoptimized Baseline**: Travel Time: $9.20 \pm 0.14$ min, Congestion: $96.5 \pm 0.5\%$, Queue: $2,227 \pm 140$ veh, Cost: $1.161 \pm 0.044$.
-- **Independent Optimization**: Travel Time: $7.97 \pm 0.08$ min (**-13.4%**), Congestion: $88.9 \pm 0.9\%$, Queue: $724 \pm 81$ veh (**-67.5%**), Cost: $0.744 \pm 0.026$. Latency: **8.55 ms/step**.
-- **Coordinated Optimization**: Travel Time: $7.98 \pm 0.09$ min (**-13.2%**), Congestion: $93.0 \pm 0.8\%$, Queue: $781 \pm 94$ veh (**-64.9%**), Cost: $0.757 \pm 0.030$. Latency: **520.45 ms/step**.
-- **Multi-Step MPC ($H=3$)**: Travel Time: $8.09 \pm 0.08$ min (**-12.1%**), Congestion: $93.8 \pm 0.7\%$, Queue: $868 \pm 82$ veh (**-61.0%**), Cost: $1.324 \pm 0.042$. Latency: **3,466.38 ms/step**.
+- **Unoptimized Baseline**: Travel Time: $9.20 \pm 0.14$ min, Congestion: $96.5 \pm 0.5\%$, Queue: $2,227.3 \pm 140.4$ veh, Cost: $1.161 \pm 0.044$.
+- **Independent Optimization**: Travel Time: $7.97 \pm 0.08$ min (**-13.4%**), Congestion: $88.9 \pm 0.9\%$, Queue: $724.2 \pm 81.1$ veh (**-67.5%**), Cost: $0.744 \pm 0.026$. Latency: **8.3 ms/step**.
+- **Coordinated Optimization**: Travel Time: $7.99 \pm 0.09$ min (**-13.2%**), Congestion: $93.0 \pm 0.8\%$, Queue: $781.2 \pm 93.6$ veh (**-64.9%**), Cost: $0.757 \pm 0.030$. Latency: **538.2 ms/step**.
+- **Multi-Step MPC ($H=3$)**: Travel Time: $8.09 \pm 0.08$ min (**-12.1%**), Congestion: $93.8 \pm 0.7\%$, Queue: $868.4 \pm 82.0$ veh (**-61.0%**), Cost: $1.324 \pm 0.042$. Latency: **3,551.0 ms/step**.
 
 #### Normal Demand Scenario (Baseline Diurnal)
-- **Unoptimized Baseline**: Travel Time: $7.39 \pm 0.02$ min, Congestion: $76.5 \pm 0.8\%$, Queue: $185.4 \pm 14.0$ veh.
-- **Independent Optimization**: Travel Time: $7.21 \pm 0.02$ min, Congestion: $68.5 \pm 0.6\%$, Queue: $51.2 \pm 6.8$ veh.
-- **Coordinated Optimization**: Travel Time: $7.21 \pm 0.02$ min, Congestion: $75.1 \pm 0.7\%$, Queue: **$43.6 \pm 3.6$ veh** (**-14.8% vs Independent, $p=0.037$**).
-- **Multi-Step MPC ($H=3$)**: Travel Time: $7.30 \pm 0.02$ min, Congestion: $75.0 \pm 0.8\%$, Queue: $116.7 \pm 6.2$ veh.
+- **Unoptimized Baseline**: Travel Time: $7.39 \pm 0.02$ min, Congestion: $76.5 \pm 0.8\%$, Queue: $185.4 \pm 14.0$ veh, Cost: $0.445 \pm 0.006$.
+- **Independent Optimization**: Travel Time: $7.21 \pm 0.02$ min, Congestion: $68.5 \pm 0.6\%$, Queue: $51.2 \pm 6.8$ veh, Cost: $0.427 \pm 0.004$.
+- **Coordinated Optimization**: Travel Time: $7.21 \pm 0.02$ min, Congestion: $75.1 \pm 0.7\%$, Queue: **$43.6 \pm 3.6$ veh** (**-13.91% pairwise reduction vs Independent**).
+  - *Inferential Statistics*: Raw paired t-test $t(9) = 4.0737, p_{\text{raw}} = 0.0028$; Wilcoxon $W = 3.0, p = 0.0039$; 95% CI $[3.40, 11.90]$ veh; Cohen's $d_z = 1.288$ (large effect size); Holm-Bonferroni family-wise adjusted $p_{\text{adj}} = 0.0373 < 0.05$ (16 comparison tests in family).
+- **Multi-Step MPC ($H=3$)**: Travel Time: $7.30 \pm 0.02$ min, Congestion: $75.0 \pm 0.8\%$, Queue: $116.7 \pm 6.2$ veh, Cost: $0.595 \pm 0.014$.
 
 #### Intercity Bottleneck Scenario (Corridor Throttled to 900 veh/h)
-- **Unoptimized Baseline**: Travel Time: $7.19 \pm 0.03$ min, Congestion: $74.9 \pm 0.9\%$, Queue: $60.5 \pm 15.4$ veh.
-- **Independent Optimization**: Travel Time: $6.97 \pm 0.01$ min, Congestion: $65.6 \pm 0.6\%$, Queue: $0.0 \pm 0.1$ veh.
+- **Unoptimized Baseline**: Travel Time: $7.19 \pm 0.03$ min, Congestion: $74.9 \pm 0.9\%$, Queue: $60.5 \pm 15.4$ veh, Cost: $0.384 \pm 0.007$.
+- **Independent Optimization**: Travel Time: $6.97 \pm 0.01$ min, Congestion: $65.6 \pm 0.6\%$, Queue: $0.0 \pm 0.1$ veh, Cost: $0.389 \pm 0.003$.
 - **Coordinated Optimization**: Travel Time: $7.10 \pm 0.02$ min, Congestion: $73.4 \pm 0.8\%$, Queue: $2.2 \pm 1.4$ veh, Cost: **$0.369 \pm 0.004$** (Lowest combined cost).
+- **Multi-Step MPC ($H=3$)**: Travel Time: $7.11 \pm 0.02$ min, Congestion: $73.8 \pm 0.9\%$, Queue: $4.8 \pm 3.2$ veh, Cost: $0.436 \pm 0.011$.
 
 ---
 
@@ -342,8 +344,9 @@ An unrestricted forward tree over $H=3$ steps produces $25^3 = 15,625$ candidate
 
 ### Dataset Provenance
 - **Dataset ID**: `DATASET-BENCHMARK-TC-01`
-- **Origin**: Aligned with the open California Department of Transportation (Caltrans) Performance Measurement System (PeMS) loop detector format.
-- **License**: CC0 / Open Municipal Data terms.
+- **Origin & Nature**: **Synthetic Benchmark Aligned with Caltrans PeMS Schema**. It is mathematically synthesized within `realworld_service.py` using dual-peak Gaussian commute curves and BPR speed degradation formulas. It is NOT raw telemetry downloaded from the Caltrans PeMS web server.
+- **Data Schema**: Aligned with California Department of Transportation (Caltrans) PeMS detector schema: station/sensor ID, UTC timestamp, vehicular flow count, average speed (km/h), occupancy percentage, and travel time.
+- **External Data Ingestion**: The system also provides a live ingestion pipeline (`/api/data/traffic/upload`) to import genuine external municipal CSV/JSON records.
 - **Observation Count**: 48 hourly intervals across 6 sensor locations (`SENSOR_ALPHA_NORTH`, `SENSOR_ALPHA_CORE`, `SENSOR_ALPHA_PORT`, `SENSOR_BETA_CAMPUS`, `SENSOR_BETA_CORE`, `SENSOR_IC_CORRIDOR`).
 
 ### Calibration Methodology
@@ -356,9 +359,12 @@ An unrestricted forward tree over $H=3$ steps produces $25^3 = 15,625$ candidate
 
 ### Measured Calibration Performance
 - **Optimal Parameters Found**: `demand_scale = 2.0`, `capacity_scale = 1.3`, `speed_factor = 1.0`, `intercity_capacity_scale = 1.8`.
-- **Validation MAE**: 0.714 min.
-- **Validation Safe MAPE**: 10.69%.
-- **Pearson Correlation ($r$)**: **0.978** (Exceptional temporal synchrony with ground truth).
+- **Initial Objective Error**: 0.739 min $\to$ **Calibrated Error**: 0.694 min (**4.4% error reduction**).
+- **Validation Travel Time MAE**: 0.628 min (uncalibrated: 0.657 min).
+- **Validation Travel Time RMSE**: 0.850 min (uncalibrated: 0.934 min).
+- **Validation Safe MAPE**: 9.96% (uncalibrated: 10.17%).
+- **Mean Signed Bias**: -0.276 min (uncalibrated: -0.481 min, **42.6% reduction in bias**).
+- **Pearson Correlation ($r$)**: **0.979** (high temporal synchrony with ground truth diurnal profile across 87 holdout observations).
 
 ---
 
@@ -518,16 +524,16 @@ npm run build
    **A:** It predicts 4 continuous targets: future traffic demand and congestion levels for both City A and City B across lookahead horizons $t+1, t+3,$ and $t+6$.
 
 7. **Q: What machine learning algorithm is used, and why?**  
-   **A:** A Multi-Output Random Forest Regressor (`n_estimators=100, max_depth=12`). Random Forests naturally handle non-linear BPR interactions, require no feature normalization, are robust to outliers, and support simultaneous multi-target prediction.
+   **A:** A Multi-Output Random Forest Regressor (`n_estimators=45, max_depth=9, min_samples_split=3`). Random Forests naturally handle non-linear BPR interactions, require no feature normalization, are robust to outliers, and support simultaneous multi-target prediction across City A and City B.
 
 8. **Q: How do you prevent data leakage during ML training?**  
-   **A:** We use a strict chronological split (first 70% train, subsequent 30% test) without shuffling. Training features only utilize historical and lagged values ($t, t-1$).
+   **A:** We use a strict chronological split (first 70% train, subsequent 30% test) across disjoint random seeds (`seeds [100..128]` for training, `seeds [901, 902]` for testing). Training features only utilize historical and lagged values ($t, t-1$).
 
 9. **Q: What baseline is used to evaluate the ML model?**  
-   **A:** A Persistence Baseline ($\hat{y}_{t+h} = y_t$), which assumes future conditions equal current conditions. The Random Forest model achieved over 85% error reduction compared to persistence.
+   **A:** A Persistence Baseline ($\hat{y}_{t+h} = y_t$), which assumes future conditions equal current conditions. The Random Forest model achieved over 86% error reduction across all 4 targets compared to persistence.
 
-10. **Q: Is the ML model actually used at runtime, or is it hardcoded?**  
-    **A:** It is genuinely trained, evaluated, and used at runtime. The `MPCOptimizerService` queries `ai_predictor.predict()` during receding-horizon lookahead. If the model is not yet trained, the system safely falls back to simulation-based lookahead.
+10. **Q: Is the ML model actually used by MPC at runtime, or how does MPC plan?**  
+    **A:** The ML model is an independent forecasting engine that predicts future traffic volumes and congestion for UI dashboards and alerts (`/api/ai/predict`). The `MPCOptimizerService`, by contrast, performs forward planning using **memory-isolated simulation engine rollouts** (`copy.deepcopy(engine).advance_step(...)`) to evaluate actual discrete transition physics and queue spillover across candidate sequences.
 
 ### Optimization Strategies
 11. **Q: What is the main difference between Phase 5 and Phase 6 optimization?**  
@@ -546,17 +552,17 @@ npm run build
     **A:** MPC plans actions across multiple future time steps ($H=3$), evaluates candidate sequences using discounted cumulative cost $C = \sum \gamma^t c_t$, but commits **only the first action pair** before advancing time and repeating the process.
 
 16. **Q: How does Bounded Beam Search prevent an exponential search explosion in MPC?**  
-    **A:** Instead of exploring all $25^3 = 15,625$ action branches, Beam Search only keeps the top $K=5$ most promising branches at each step, bounding total candidate evaluations to at most 275 and keeping calculation latency under 3.5 seconds.
+    **A:** Instead of exploring all $25^3 = 15,625$ action branches, Beam Search only keeps the top $K=5$ most promising branches at each step, bounding total candidate evaluations to at most 275 and keeping calculation latency under 3.6 seconds.
 
 17. **Q: What happens if MPC fails or times out?**  
     **A:** It features an autonomous fallback to the Phase 6 Joint Coordinated Optimizer, logging `fallback_occurred: true` without crashing the simulation.
 
 ### Research Findings & Experimental Rigor
 18. **Q: What did the 10-seed matched experiment show under peak demand?**  
-    **A:** Both Independent and Coordinated optimization significantly beat the unoptimized baseline, reducing travel time by ~13.5% (from 9.20 to 7.97 min) and cutting queuing by ~67% (from 2,227 to 724 vehicles).
+    **A:** Both Independent and Coordinated optimization significantly beat the unoptimized baseline, reducing travel time by ~13.4% (from 9.20 to 7.97 min) and cutting queuing by ~67% (from 2,227 to 724 vehicles).
 
 19. **Q: Did Joint Coordinated optimization beat Independent optimization across all metrics?**  
-    **A:** No. Under Peak demand, Independent control achieved slightly lower congestion because each city aggressively metered local bottlenecks without coordination overhead. However, under Normal conditions, Coordinated control dissipated queues significantly better (43.6 vs. 51.2 vehicles, a 14.8% advantage, $p=0.037$).
+    **A:** No. Under Peak demand, Independent control achieved slightly lower congestion (88.9% vs. 93.0%) because each city aggressively metered local bottlenecks without paying a coordination constraint penalty. However, under Normal conditions, Coordinated control dissipated queues significantly better ($43.57 \pm 3.62$ vs. $51.23 \pm 6.78$ vehicles, a 13.91% pairwise reduction, raw paired t-test $p = 0.0028$, Wilcoxon $p = 0.0039$, Cohen's $d_z = 1.288$, and Holm-Bonferroni adjusted $p = 0.0373 < 0.05$ across the 16 hypothesis family).
 
 20. **Q: Why was MPC's objective cost higher than Coordinated optimization under peak conditions?**  
     **A:** MPC plans over 3 steps using a discounted cumulative cost function. In high congestion, it often chooses to hold traffic upstream to prevent severe future risk, incurring higher immediate queuing penalties compared to greedy single-step optimizers.
@@ -565,11 +571,11 @@ npm run build
     **A:** Paired Student's t-tests, non-parametric Wilcoxon signed-rank tests, Cohen's $d_z$ standardized effect sizes, and Holm-Bonferroni family-wise error rate corrections ($\alpha = 0.05$).
 
 22. **Q: What is Cohen's $d_z$, and what do its values mean?**  
-    **A:** Cohen's $d_z$ measures effect size for paired samples: $d_z = \bar{D} / s_D$. Values below 0.2 indicate negligible differences, 0.2–0.5 small, 0.5–0.8 medium, and $\ge 0.8$ large effect sizes.
+    **A:** Cohen's $d_z$ measures effect size for paired samples: $d_z = \bar{D} / s_D$. Values below 0.2 indicate negligible differences, 0.2–0.5 small, 0.5–0.8 medium, and $\ge 0.8$ large effect sizes. In our normal queue comparison, $d_z = 1.288$ (a strong, large effect).
 
 ### Real-World Data & Calibration (Phase 9)
 23. **Q: What real-world dataset was used, and where did it come from?**  
-    **A:** `DATASET-BENCHMARK-TC-01`, derived from California Department of Transportation (Caltrans) PeMS loop detector observations under open government data terms.
+    **A:** The built-in reference dataset is `DATASET-BENCHMARK-TC-01`, a **synthetic benchmark dataset mathematically aligned with the Caltrans PeMS detector schema** (6 sensors, 48 hourly intervals with dual-peak Gaussian commute curves). It is NOT raw telemetry downloaded from the Caltrans PeMS website. The system also supports uploading and validating genuine external municipal CSV/JSON records.
 
 24. **Q: How does the system handle corrupt or invalid uploaded traffic data?**  
     **A:** A strict quarantine buffer isolates records with negative flow, impossible speeds ($>200$ km/h), or occupancy $>100\%$, recording the exact rejection reason in `DataQualityReport` without crashing the import.
@@ -577,8 +583,8 @@ npm run build
 25. **Q: What is Safe MAPE, and why is it needed?**  
     **A:** Standard Mean Absolute Percentage Error ($\frac{|y - \hat{y}|}{y}$) divides by zero when traffic flow or queue is zero. Safe MAPE adds $\epsilon = 0.5$ to the denominator: $\max(|y|, 0.5)$, guaranteeing numerical stability.
 
-26. **Q: How was the digital twin calibrated against real-world data?**  
-    **A:** Bounded grid search adjusted 4 scaling parameters (`demand_scale`, `capacity_scale`, `speed_factor`, `intercity_capacity_scale`) on a 70% training split. On the 30% held-out validation data, it achieved a 4.4% error reduction and high correlation ($r = 0.978$).
+26. **Q: How was the digital twin calibrated against the benchmark data?**  
+    **A:** Bounded grid search adjusted 4 scaling parameters (`demand_scale=2.0`, `capacity_scale=1.3`, `speed_factor=1.0`, `intercity_capacity_scale=1.8`) on a 70% training split. On the 30% held-out validation data (87 observations), it achieved a 4.4% error reduction, reduced bias by 42.6%, and demonstrated high temporal synchrony ($r = 0.979$).
 
 27. **Q: Does real-world calibration prove that the optimizations will work in the real world?**  
     **A:** No. We explicitly disclose this limitation: calibration proves the simulation can mirror real-world traffic flows, but testing optimizations against real data represents **simulation-based evaluation under real-data boundary conditions**, not proof of real-world causal effectiveness (since we cannot run a physical control experiment on real highways).

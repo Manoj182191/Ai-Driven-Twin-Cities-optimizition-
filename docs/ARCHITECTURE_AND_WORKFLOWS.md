@@ -105,8 +105,7 @@ sequenceDiagram
     
     loop At Simulation Step k
         Engine->>Twin: Calculate Flow & BPR Delays: t = t_0 * (1 + 0.15 * (V/C)^4)
-        Engine->>ML: Pass Current Step Telemetry
-        ML-->>MPC: Predict Future Conditions (t+1, t+2, ..., t+H)
+        Engine->>ML: Pass Current Step Telemetry (Forecast link demand/congestion for UI)
         
         alt Mode: Independent Optimization (Phase 5)
             Engine->>Engine: City A selects argmin c_A(a_A) locally
@@ -115,7 +114,9 @@ sequenceDiagram
             Engine->>Engine: Evaluate 25 (a_A, a_B) pairs on state clone
             Engine->>Engine: Select pair minimizing combined system cost c_0
         else Mode: Multi-Step Receding Horizon MPC (Phase 8)
+            MPC->>Engine: Clone engine state via copy.deepcopy(parent_engine)
             MPC->>MPC: Branch candidate sequences over horizon H via Beam Search
+            MPC->>MPC: Simulate future steps using sandbox_engine.advance_step(1, a_A, a_B)
             MPC->>MPC: Evaluate discounted cumulative cost C = sum gamma^t * c_t
             MPC->>MPC: Identify optimal sequence (a_A^0..a_A^H-1, a_B^0..a_B^H-1)
             MPC->>Engine: Commit ONLY immediate action pair (a_A^0, a_B^0)
