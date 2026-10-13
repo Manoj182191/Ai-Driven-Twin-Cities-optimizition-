@@ -1,4 +1,6 @@
+
 import os
+import re
 import json
 import csv
 import io
@@ -7,15 +9,20 @@ from datetime import datetime, timezone
 
 from ..models.research_models import (
     ResearchExperimentResponse,
-    ResearchExperimentStatus
+    ResearchExperimentStatus,
 )
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data", "research_experiments")
+DATA_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+    "data",
+    "research_experiments",
+)
 
 
 class ResearchStorage:
     """
-    Manages persistent storage and retrieval for research experiments using JSON files and an in-memory index.
+    Manages persistent storage and retrieval for research experiments
+    using JSON files and an in-memory index.
     """
 
     def __init__(self, data_dir: str = DATA_DIR):
@@ -25,41 +32,97 @@ class ResearchStorage:
         self._status_cache: Dict[str, ResearchExperimentStatus] = {}
         self._load_all_from_disk()
 
+    @staticmethod
+    def _valid_experiment_id(experiment_id: str) -> bool:
+        """Accept only IDs in the expected EXP-... format."""
+        return bool(
+            isinstance(experiment_id, str)
+            and re.fullmatch(r"EXP-[A-Za-z0-9_-]+", experiment_id)
+        )
+
     def _load_all_from_disk(self):
         """Loads existing experiment files on startup."""
         try:
             for fname in os.listdir(self.data_dir):
                 if fname.endswith(".json") and not fname.endswith("_status.json"):
                     fpath = os.path.join(self.data_dir, fname)
+
+                    # Only load files with valid experiment IDs.
+                    experiment_id = fname[:-5]
+                    if not self._valid_experiment_id(experiment_id):
+                        continue
+
                     with open(fpath, "r", encoding="utf-8") as f:
                         data = json.load(f)
-                        resp = ResearchExperimentResponse(**data)
-                        self._memory_cache[resp.experiment_id] = resp
+
+                    resp = ResearchExperimentResponse(**data)
+
+                    # Ensure the file name and stored ID match.
+                    if resp.experiment_id != experiment_id:
+                        continue
+
+                    self._memory_cache[resp.experiment_id] = resp
+
                 elif fname.endswith("_status.json"):
                     fpath = os.path.join(self.data_dir, fname)
+
+                    # Remove the status-file suffix before validating.
+                    experiment_id = fname[:-12]
+                    if not self._valid_experiment_id(experiment_id):
+                        continue
+
                     with open(fpath, "r", encoding="utf-8") as f:
                         data = json.load(f)
-                        stat = ResearchExperimentStatus(**data)
-                        self._status_cache[stat.experiment_id] = stat
+
+                    stat = ResearchExperimentStatus(**data)
+
+                    if stat.experiment_id != experiment_id:
+                        continue
+
+                    self._status_cache[stat.experiment_id] = stat
+
         except Exception:
+            # Preserve the existing behavior of ignoring loading errors.
             pass
 
     def save_status(self, status: ResearchExperimentStatus):
+        """Save status only when its experiment ID is valid."""
+        if not self._valid_experiment_id(status.experiment_id):
+            raise ValueError("Invalid experiment ID")
+
+        status_file = os.path.join(
+            self.data_dir,
+            f"{status.experiment_id}_status.json",
+        )
+
+        with open(status_file, "w", encoding="utf-8") as f:
+            json.dump(status.model_dump(), f, indent=2)
+
         self._status_cache[status.experiment_id] = status
-        status_file = os.path.join(self.data_dir, f"{status.experiment_id}_status.json")
-        try:
-            with open(status_file, "w", encoding="utf-8") as f:
-                json.dump(status.model_dump(), f, indent=2)
-        except Exception:
-            pass
 
     def get_status(self, experiment_id: str) -> Optional[ResearchExperimentStatus]:
+        if not self._valid_experiment_id(experiment_id):
+            return None
+
         return self._status_cache.get(experiment_id)
 
     def save_experiment(self, experiment: ResearchExperimentResponse):
+        """Save an experiment after validating its ID."""
+        if not self._valid_experiment_id(experiment.experiment_id):
+            raise ValueError("Invalid experiment ID")
+
+        exp_file = os.path.join(
+            self.data_dir,
+            f"{experiment.experiment_id}.json",
+        )
+
+        with open(exp_file, "w", encoding="utf-8") as f:
+            json.dump(experiment.model_dump(), f, indent=2)
+
+        # Update the in-memory cache after successfully writing the file.
         self._memory_cache[experiment.experiment_id] = experiment
-        
-        # Also update status to completed
+
+        # Also update status to completed.
         status = ResearchExperimentStatus(
             experiment_id=experiment.experiment_id,
             name=experiment.name,
@@ -68,32 +131,45 @@ class ResearchStorage:
             completed_runs=experiment.total_runs_completed,
             total_expected_runs=experiment.total_runs_completed,
             created_at=experiment.created_at,
-            completed_at=experiment.completed_at
+            completed_at=experiment.completed_at,
         )
+
         self.save_status(status)
 
-        exp_file = os.path.join(self.data_dir, f"{experiment.experiment_id}.json")
-        with open(exp_file, "w", encoding="utf-8") as f:
-            json.dump(experiment.model_dump(), f, indent=2)
+    def get_experiment(
+        self, experiment_id: str
+    ) -> Optional[ResearchExperimentResponse]:
+        if not self._valid_experiment_id(experiment_id):
+            return None
 
-    def get_experiment(self, experiment_id: str) -> Optional[ResearchExperimentResponse]:
         if experiment_id in self._memory_cache:
             return self._memory_cache[experiment_id]
-        
-        exp_file = os.path.join(self.data_dir, f"{experiment_id}.json")
+
+        exp_file = os.path.join(
+            self.data_dir,
+            f"{experiment_id}.json",
+        )
+
         if os.path.exists(exp_file):
             try:
                 with open(exp_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    resp = ResearchExperimentResponse(**data)
-                    self._memory_cache[experiment_id] = resp
-                    return resp
+
+                resp = ResearchExperimentResponse(**data)
+
+                if resp.experiment_id != experiment_id:
+                    return None
+
+                self._memory_cache[experiment_id] = resp
+                return resp
+
             except Exception:
                 return None
+
         return None
 
     def list_experiments(self) -> List[ResearchExperimentStatus]:
-        # Return all known experiment statuses, newest first
+        """Return all known experiment statuses, newest first."""
         res = list(self._status_cache.values())
         res.sort(key=lambda s: s.created_at, reverse=True)
         return res
@@ -101,10 +177,12 @@ class ResearchStorage:
     def export_csv(self, experiment_id: str) -> str:
         """Exports all run-level records to CSV format."""
         exp = self.get_experiment(experiment_id)
+
         if not exp or not exp.run_records:
             return ""
 
         output = io.StringIO()
+
         fieldnames = [
             "experiment_id",
             "scenario",
@@ -126,19 +204,24 @@ class ResearchStorage:
             "intercity_queue_length",
             "total_intervention_cost",
             "total_vehicles_served",
-            "optimization_execution_time_ms"
+            "optimization_execution_time_ms",
         ]
+
         writer = csv.DictWriter(output, fieldnames=fieldnames)
         writer.writeheader()
-        for r in exp.run_records:
-            writer.writerow(r.model_dump())
+
+        for record in exp.run_records:
+            writer.writerow(record.model_dump())
+
         return output.getvalue()
 
     def export_json(self, experiment_id: str) -> str:
         """Exports the full experiment document as pretty-printed JSON."""
         exp = self.get_experiment(experiment_id)
+
         if not exp:
             return "{}"
+
         return json.dumps(exp.model_dump(), indent=2)
 
 

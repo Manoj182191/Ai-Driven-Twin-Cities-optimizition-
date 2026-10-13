@@ -1,4 +1,4 @@
-export interface RoadNode {
+﻿export interface RoadNode {
   node_id: string;
   name: string;
   x: number;
@@ -838,7 +838,10 @@ export async function fetchResearchHistory(): Promise<ResearchExperimentStatus[]
 }
 
 export function getResearchExportUrl(experimentId: string, format: 'csv' | 'json'): string {
-  return `${API_BASE}/research/experiments/${experimentId}/export?format=${format}`;
+  if (!/^EXP-[A-Za-z0-9_-]+$/.test(experimentId)) {
+    throw new Error('Invalid experiment ID');
+  }
+  return `${API_BASE}/research/experiments/${encodeURIComponent(experimentId)}/export?format=${format}`;
 }
 
 // ============================================================================
@@ -1274,7 +1277,10 @@ export async function runDigitalTwinValidation(
 }
 
 export function getDatasetExportDownloadUrl(datasetId: string, format: 'json' | 'csv'): string {
-  return `${API_BASE}/data/traffic/datasets/${datasetId}/export?format=${format}`;
+  if (!/^[A-Za-z0-9_-]+$/.test(datasetId)) {
+    throw new Error('Invalid dataset ID');
+  }
+  return `${API_BASE}/data/traffic/datasets/${encodeURIComponent(datasetId)}/export?format=${format}`;
 }
 
 
